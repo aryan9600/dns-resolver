@@ -9,7 +9,9 @@ pub enum DNSResolverError {
     #[error("error while encoding `{0}`: `{1}`")]
     Encode(String, String),
     #[error("error while parsing bytes")]
-    Parse
+    Parse,
+    #[error("invalid record type: `{0}`")]
+    InvalidRecordType(String)
 }
 
 pub type Result<T> = std::result::Result<T, DNSResolverError>;

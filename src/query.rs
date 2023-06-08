@@ -1,5 +1,6 @@
-use crate::domain_name::DomainName;
+use crate::domain_name::{DomainName, LabelSequenceParser};
 use crate::error::{DNSResolverError, Result, map_decode_err, map_encode_err};
+use crate::rr_types::RRType;
 use crate::utils;
 
 #[derive(Debug)]
@@ -15,12 +16,12 @@ pub struct DNSHeader {
 #[derive(Debug)]
 pub struct DNSQuestion {
     name: DomainName,
-    q_type: u16,
+    q_type: RRType,
     class: u16,
 }
 
 impl DNSQuestion {
-    pub fn new(name: DomainName, q_type: u16, class: u16) -> DNSQuestion {
+    pub fn new(name: DomainName, q_type: RRType, class: u16) -> DNSQuestion {
         DNSQuestion { name, q_type, class }
     }
 
@@ -29,22 +30,25 @@ impl DNSQuestion {
         let encoded_name = self.name.encode()
             .map_err(|e| map_encode_err("question", &e))?;
         encoded.extend(encoded_name);
-        encoded.extend(self.q_type.to_be_bytes());
+        let rr_type = self.q_type.clone() as u16;
+        encoded.extend(rr_type.to_be_bytes());
         encoded.extend(self.class.to_be_bytes());
         Ok(encoded)
     }
 
     pub fn decode<'a, T>(iter: &mut T) -> Result<DNSQuestion>
     where T: Iterator<Item = &'a u8> + Clone {
-        let mut domain_name = DomainName::new(String::from(""));
-        domain_name.decode(iter, None)?;
+        let mut label_parser = LabelSequenceParser::new();
+        let name = label_parser.construct_domain_name(iter, None)?;
+
         let parts = utils::u8_bytes_to_u16_vec(iter, 2)?;
         if parts.len() < 2 {
             return Err(DNSResolverError::Decode(String::from("question"), String::from("failed to convert bytes")));
         }
+        let q_type: RRType = parts[0].try_into()?;
         Ok(DNSQuestion{
-            name: domain_name,
-            q_type: parts[0],
+            name,
+            q_type,
             class: parts[1]
         })
     }
@@ -102,8 +106,7 @@ impl DNSHeader {
     }
 }
 
-pub fn build_query(domain_name: String, record_type: u16) -> Result<Vec<u8>> {
-    // let recursion: u16 = 1 << 8;
+pub fn build_query(domain_name: String, record_type: RRType) -> Result<Vec<u8>> {
     let header = DNSHeader::new(45232, 0, 1, 0, 0, 0);
     let question = DNSQuestion::new(DomainName::new(domain_name), record_type, 1);
     let mut query: Vec<u8> = vec![];

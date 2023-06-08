@@ -2,15 +2,16 @@ use std::fmt::Debug;
 
 use itertools::Itertools;
 
-use crate::domain_name::DomainName;
+use crate::domain_name::{DomainName, LabelSequenceParser};
 use crate::query;
 use crate::error::{DNSResolverError, Result, map_decode_err};
+use crate::rr_types::RRType;
 use crate::utils;
 
 #[derive(Debug)]
 pub struct DNSRecord {
     name: DomainName,
-    r_type: u16,
+    r_type: RRType,
     class: u16,
     ttl: u32,
     rd_len: u16,
@@ -24,26 +25,29 @@ struct Data {
 }
 
 impl DNSRecord {
-    pub fn r_type(&self) -> u16 {
-        self.r_type
+    pub fn r_type(&self) -> &RRType {
+        &self.r_type
     }
 
-    pub fn parsed_data(&self) -> Option<String> {
-        self.data.parsed.clone()
+    pub fn parsed_data(&self) -> &Option<String> {
+        &self.data.parsed
     }
 
     pub fn decode<'a, T>(iter: &mut T, response: &mut T) -> Result<DNSRecord>
     where T: Iterator<Item = &'a u8> + Clone {
-        let mut name = DomainName::new(String::from(""));
-        name.decode(iter, Some(&mut response.clone()))?;
+        // construct domain name
+        let mut label_parser = LabelSequenceParser::new();
+        let name = label_parser.construct_domain_name(iter, Some(&mut response.clone()))?;
 
+        // get r_type and class
         let parts = utils::u8_bytes_to_u16_vec(iter, 2)?;
         if parts.len() < 2 {
             return Err(DNSResolverError::Decode(String::from("rr"), String::from("failed to convert bytes")));
         }
-        let r_type = parts[0];
+        let r_type: RRType = parts[0].try_into()?;
         let class = parts[1];
 
+        // get ttl
         let mut ttl_bytes: [u8; 4] = [0, 0, 0,0];
         for i in 0..ttl_bytes.len() {
             ttl_bytes[i] = *iter.next().
@@ -51,6 +55,7 @@ impl DNSRecord {
         }
         let ttl = u32::from_be_bytes(ttl_bytes);
 
+        // get rd_len
         let rd_len_bytes = utils::u8_bytes_to_u16_vec(iter, 1)?;
         if rd_len_bytes.len() < 1 {
             return Err(DNSResolverError::Decode(String::from("rr"), String::from("failed to convert bytes")));
@@ -59,6 +64,7 @@ impl DNSRecord {
         let rd_size = usize::try_from(rd_len)
             .map_err(|e| map_decode_err("rr", &e))?;
 
+        // get data in its raw format
         let data = iter.take(rd_size).map(|x| *x).collect_vec();
 
         let mut record = DNSRecord{
@@ -69,39 +75,37 @@ impl DNSRecord {
             rd_len,
             data: Data { raw: data, parsed: None },
         };
+
+        // parse data into a human readable format
         record.data.parsed = record.parse_raw_data(response).ok();
         Ok(record)
     }
 
     fn parse_raw_data<'a, T>(&self, response: &mut T) -> Result<String>
     where T: Iterator<Item = &'a u8> + Clone {
-        if self.r_type == 1 {
+        // if it's an A record, then each byte represents an octect, so just join them
+        // with a '.' as a separator.
+        if self.r_type == RRType::A {
             let data = self.data.raw.iter().map(|x| x.to_string()).join(".");
             return Ok(data);
-        } else if self.r_type == 16 {
+        // if it's a TXT record, then the bytes are utf8 bytes so convert them into a string.
+        } else if self.r_type == RRType::TXT {
             let data = String::from_utf8_lossy(&self.data.raw[1..]).to_string();
             return Ok(data);
-        } else if self.r_type == 2 {
+        // if it's a NS or CNAME record, then the bytes are label sequences which may or may
+        // not be compressed.
+        } else if self.r_type == RRType::NS || self.r_type == RRType::CNAME {
             let raw = &self.data.raw;
             let pp = raw[raw.len()-2];
-            let data: String;
-            let mut domain_name = DomainName::new(String::from(""));
+            let name: DomainName;
+            let mut label_parser = LabelSequenceParser::new();
             if pp.leading_ones() == 2 {
-                let len = usize::try_from(raw[0])
-                    .map_err(|e| map_decode_err("rr", &e))?;
-                let label_bytes = &raw[1..len+1];
-                let label = String::from_utf8_lossy(label_bytes).into_owned();
-
                 let val = response.map(|x| *x).collect_vec();
-                let pointer = [pp, raw[raw.len()-1]];
-
-                domain_name.decode(&mut pointer.iter(), Some(&mut val.iter()))?;
-                data = format!("{}.{}", label, domain_name.0)
+                name = label_parser.construct_domain_name(&mut raw.iter(), Some(&mut val.iter()))?;
             } else {
-                domain_name.decode(&mut raw.iter(), None)?;
-                data = domain_name.0;
+                name = label_parser.construct_domain_name(&mut raw.iter(), None)?;
             }
-            return Ok(data);
+            return Ok(name.0);
         } else {
             return Err(DNSResolverError::Parse);
         }
