@@ -62,7 +62,7 @@ fn resolve_ns_record(domain: String) -> Result<Vec<String>> {
 
 fn resolve_cname_record(domain: String) -> Result<Vec<String>> {
     let mut nameserver = String::from("198.41.0.4");
-    let record_type = RRType::NS;
+    let record_type = RRType::CNAME;
 
     loop {
         println!("Querying {} for {} about {:?} type", nameserver, domain, record_type);
