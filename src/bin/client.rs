@@ -20,10 +20,15 @@ fn main() -> Result<()> {
 fn resolve(domain: String, record_type: RRType) -> Result<String> {
     if record_type == RRType::A {
         let record = resolve_a_record(domain)?;
-        return Ok(record);
+        println!("records {:?}", record);
+        return Ok(record[0].clone());
     } else if record_type == RRType::CNAME {
         let record = resolve_cname_record(domain)?;
         return Ok(record);
+    } else if record_type == RRType::TXT {
+        let record = resolve_txt_record(domain)?;
+        println!("records {:?}", record);
+        return Ok(record[0].clone());
     }
     let s = String::from("");
     Ok(s)
@@ -42,14 +47,34 @@ fn resolve_cname_record(domain: String) -> Result<String> {
         }  else if let Some(ns_ip) = packet.ns_ip() {
             nameserver = ns_ip.to_owned();
         } else if let Some(ns) = packet.nameserver() {
-            nameserver = resolve_a_record(ns.to_owned())?;
+            nameserver = resolve_a_record(ns.to_owned())?[0].clone();
         } else {
             return Err(Error::msg(format!("could not lookup A record of {domain}")))
         }
     }
 }
 
-fn resolve_a_record(domain: String) -> Result<String> {
+fn resolve_txt_record(domain: String) -> Result<Vec<String>> {
+    let mut nameserver = String::from("198.41.0.4");
+
+    loop {
+        println!("Querying {} for {} about {:?} type", nameserver, domain, RRType::TXT);
+        let response = send_query(nameserver, domain.clone(), RRType::TXT)?;
+        let packet = DNSPacket::decode(response)?;
+
+        if packet.txt().len() > 0 {
+            return Ok(packet.txt());
+        }  else if let Some(ns_ip) = packet.ns_ip() {
+            nameserver = ns_ip.to_owned();
+        } else if let Some(ns) = packet.nameserver() {
+            nameserver = resolve_a_record(ns.to_owned())?[0].clone();
+        } else {
+            return Err(Error::msg(format!("could not lookup A record of {domain}")))
+        }
+    }
+}
+
+fn resolve_a_record(domain: String) -> Result<Vec<String>> {
     let mut nameserver = String::from("198.41.0.4");
 
     loop {
@@ -57,16 +82,15 @@ fn resolve_a_record(domain: String) -> Result<String> {
         let response = send_query(nameserver, domain.clone(), RRType::A)?;
         let packet = DNSPacket::decode(response)?;
 
-        if let Some(ip) = packet.answer() {
-            return Ok(ip.to_owned());
+        if packet.answer().len() > 0 {
+            return Ok(packet.answer());
         } else if let Some(cname) = packet.cname() {
-            println!("{:?}", packet);
-            nameserver = resolve_a_record(cname.to_owned())?;
-            return Ok(nameserver);
+            let resolved_cname = resolve_a_record(cname.to_owned());
+            return resolved_cname;
         } else if let Some(ns_ip) = packet.ns_ip() {
             nameserver = ns_ip.to_owned();
         } else if let Some(ns) = packet.nameserver() {
-            nameserver = resolve_a_record(ns.to_owned())?;
+            nameserver = resolve_a_record(ns.to_owned())?[0].clone();
         } else {
             return Err(Error::msg(format!("could not lookup A record of {domain}")))
         }
