@@ -39,37 +39,16 @@ impl DNSPacket {
         Ok(DNSPacket { header, questions, answers, authorities, additionals })
     }
 
-    pub fn answer(&self) -> Vec<String> {
+    pub fn answers(&self, record_type: &RRType) -> Vec<String> {
         let mut answers = vec![];
         for ans in &self.answers {
-            if ans.r_type() == &RRType::A {
+            if ans.r_type() == record_type {
                 if let Some(data) = ans.parsed_data() {
                     answers.push(data.to_owned());
                 }
             }
         }
         answers
-    }
-
-    pub fn txt(&self) -> Vec<String> {
-        let mut txts = vec![];
-        for ans in &self.answers {
-            if ans.r_type() == &RRType::TXT {
-                if let Some(data) = ans.parsed_data() {
-                    txts.push(data.to_owned());
-                }
-            }
-        }
-        txts
-    }
-
-    pub fn cname(&self) -> &Option<String> {
-        for ans in &self.answers {
-            if ans.r_type() == &RRType::CNAME {
-                return ans.parsed_data();
-            }
-        }
-        &None
     }
 
     pub fn ns_ip(&self) -> &Option<String> {
