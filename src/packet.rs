@@ -1,5 +1,9 @@
-use crate::{query::{DNSHeader, DNSQuestion}, resource_record::DNSRecord, rr_types::RRType};
 use crate::error::Result;
+use crate::{
+    query::{DNSHeader, DNSQuestion},
+    resource_record::DNSRecord,
+    rr_types::RRType,
+};
 
 #[derive(Debug)]
 pub struct DNSPacket {
@@ -7,7 +11,7 @@ pub struct DNSPacket {
     questions: Vec<DNSQuestion>,
     answers: Vec<DNSRecord>,
     authorities: Vec<DNSRecord>,
-    additionals: Vec<DNSRecord>
+    additionals: Vec<DNSRecord>,
 }
 
 impl DNSPacket {
@@ -35,18 +39,15 @@ impl DNSPacket {
             let rr = DNSRecord::decode(&mut packet_iter, &mut packet.iter())?;
             additionals.push(rr);
         }
-        
-        Ok(DNSPacket { header, questions, answers, authorities, additionals })
-    }
 
-    // pub fn encode(&self) -> Result<Vec<u8>> {
-        // let buf: Vec<u8> = vec![];
-        // self.header.encode(&mut buf);
-        // for q in self.questions {
-            // q.encode(&mut buf);
-        // }
-        // Ok(buf);
-    // }
+        Ok(DNSPacket {
+            header,
+            questions,
+            answers,
+            authorities,
+            additionals,
+        })
+    }
 
     pub fn answers(&self, record_type: &RRType) -> Vec<String> {
         let mut answers = vec![];
@@ -62,7 +63,7 @@ impl DNSPacket {
 
     pub fn ns_ip(&self) -> &Option<String> {
         for additional in &self.additionals {
-            if additional.r_type() == &RRType::A  {
+            if additional.r_type() == &RRType::A {
                 return additional.parsed_data();
             }
         }

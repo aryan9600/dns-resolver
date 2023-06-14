@@ -1,7 +1,9 @@
 use crate::error::{DNSResolverError, Result};
 
 pub fn u8_bytes_to_u16_vec<'a, T>(u8_bytes: &mut T, n: i32) -> Result<Vec<u16>>
-where T: Iterator<Item = &'a u8> {
+where
+    T: Iterator<Item = &'a u8>,
+{
     let mut parts = vec![];
     for _ in 0..n {
         let mut u8s: [u8; 2] = [0, 0];

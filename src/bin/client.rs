@@ -1,6 +1,6 @@
-use dns_resolver::{rr_types, resolver::Resolver};
+use anyhow::{Ok, Result};
+use dns_resolver::{resolver::Resolver, rr_types};
 use std::{env, process};
-use anyhow::{Result, Ok, Error};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,8 +15,8 @@ async fn main() -> Result<()> {
     let rr_type = rr_types::str_to_record_type(&record_type)?;
 
     let resolver = Resolver::new("0.0.0.0:3400").await?;
-    let ip = resolver.resolve(domain, rr_type).await?;
+    let (ips, _) = resolver.resolve(domain, &rr_type).await?;
 
-    println!("answer(s): {:?}", ip);
+    println!("answer(s): {:?}", ips);
     Ok(())
 }

@@ -17,7 +17,7 @@ pub enum DNSResolverError {
     #[error("failed while trying to `{0}` data: `{1}`")]
     IOFailure(String, String),
     #[error("could not lookup `{0}` record of `{1}`")]
-    LookupFailure(String, String)
+    LookupFailure(String, String),
 }
 
 pub type Result<T> = std::result::Result<T, DNSResolverError>;

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use strum_macros::{EnumString, AsRefStr};
 use crate::error::{DNSResolverError, Result};
+use strum_macros::{AsRefStr, EnumString};
 
 macro_rules! rr_type {
     ($(#[$meta:meta])* $vis:vis enum $name:ident {
@@ -44,7 +44,7 @@ rr_type!(
         MINFO,
         MX,
         TXT,
-        AAAA = 28
+        AAAA = 28,
     }
 );
 
