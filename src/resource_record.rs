@@ -1,10 +1,11 @@
 use std::fmt::Debug;
+use std::time::Duration;
 
 use itertools::Itertools;
 
 use crate::domain_name::{DomainName, LabelSequenceParser};
 use crate::query;
-use crate::error::{DNSResolverError, Result, map_decode_err};
+use crate::error::{DNSResolverError, Result, map_decode_err, map_encode_err};
 use crate::rr_types::RRType;
 use crate::utils;
 
@@ -13,7 +14,7 @@ pub struct DNSRecord {
     name: DomainName,
     r_type: RRType,
     class: u16,
-    ttl: u32,
+    ttl: Duration,
     rd_len: u16,
     data: Data
 }
@@ -53,7 +54,8 @@ impl DNSRecord {
             ttl_bytes[i] = *iter.next().
                 ok_or(DNSResolverError::Decode(String::from("rr"), String::from("could not parse bytes")))?;
         }
-        let ttl = u32::from_be_bytes(ttl_bytes);
+        let ttl_u32 = u32::from_be_bytes(ttl_bytes);
+        let ttl = Duration::from_secs(u64::from(ttl_u32));
 
         // get rd_len
         let rd_len_bytes = utils::u8_bytes_to_u16_vec(iter, 1)?;
@@ -80,6 +82,21 @@ impl DNSRecord {
         record.data.parsed = record.parse_raw_data(response).ok();
         Ok(record)
     }
+
+    // pub fn encode(&self, encoded: &mut Vec<u8>) -> Result<()> {
+        // self.name.encode_with_compression(encoded)?;
+// 
+        // let rr_type = self.r_type as u16;
+        // encoded.extend(rr_type.to_be_bytes());
+        // encoded.extend(self.class.to_be_bytes());
+// 
+        // let ttl = u32::try_from(self.ttl.as_secs())
+            // .map_err(|e| map_encode_err("rr", &e))?;
+        // encoded.extend(ttl.to_be_bytes());
+// 
+        // encoded.extend(self.rd_len.to_be_bytes());
+        // 
+    // }
 
     fn parse_raw_data<'a, T>(&self, response: &mut T) -> Result<String>
     where T: Iterator<Item = &'a u8> + Clone {

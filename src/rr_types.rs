@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use strum_macros::EnumString;
+use strum_macros::{EnumString, AsRefStr};
 use crate::error::{DNSResolverError, Result};
 
 macro_rules! rr_type {
@@ -26,7 +26,7 @@ macro_rules! rr_type {
 }
 
 rr_type!(
-    #[derive(Debug, EnumString, Clone, PartialEq)]
+    #[derive(Debug, EnumString, Clone, PartialEq, AsRefStr)]
     pub enum RRType {
         A = 1,
         NS,

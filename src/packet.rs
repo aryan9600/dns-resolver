@@ -39,6 +39,15 @@ impl DNSPacket {
         Ok(DNSPacket { header, questions, answers, authorities, additionals })
     }
 
+    // pub fn encode(&self) -> Result<Vec<u8>> {
+        // let buf: Vec<u8> = vec![];
+        // self.header.encode(&mut buf);
+        // for q in self.questions {
+            // q.encode(&mut buf);
+        // }
+        // Ok(buf);
+    // }
+
     pub fn answers(&self, record_type: &RRType) -> Vec<String> {
         let mut answers = vec![];
         for ans in &self.answers {

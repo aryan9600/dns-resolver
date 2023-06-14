@@ -88,8 +88,7 @@ impl DomainName {
         DomainName(domain)
     }
 
-    pub fn encode(&self) -> Result<Vec<u8>> {
-        let mut encoded: Vec<u8> = vec![];
+    pub fn encode(&self, encoded: &mut Vec<u8>) -> Result<()> {
         let name = &self.0;
         let parts: Vec<&str> = name.split('.').collect();
         for part in parts {
@@ -101,6 +100,73 @@ impl DomainName {
             encoded.extend(content);
         }
         encoded.extend(0_u8.to_be_bytes());
-        Ok(encoded)
+        Ok(())
     }
+
+    // pub fn encode_with_compression(&self, encoded: &mut Vec<u8>) -> Result<()> {
+        // let mut non_compressed = vec![];
+        // self.encode(&mut non_compressed)?;
+        // Last element is a 0 that we don't care about.
+        // non_compressed.pop();
+        // let mut iter = non_compressed.iter();
+// 
+        // let mut parts = vec![];
+        // loop {
+            // if let Some(len) = iter.next() {
+                // let len_usize = usize::try_from(*len)
+                    // .map_err(|e| map_encode_err("name", &e))?;
+// 
+                // let data_bytes = iter.take(len_usize);
+                // let labels = data_bytes.map(|x| *x).collect_vec();
+                // parts.push((len_usize, labels));
+            // } else {
+                // break
+            // }
+        // }
+        // parts.reverse();
+// 
+        // let mut offset = None;
+        // for i in 0..parts.len() {
+            // if let Some(idx) = find_subset_index(&encoded, &parts[i]) {
+                // TODO: validation
+                // offset = Some(idx);
+                // parts.pop();
+            // } else {
+                // break
+            // }
+        // }
+// 
+        // if let Some(offset_idx) = offset {
+            // for part in parts {
+                // encoded.push(part.0 as u8);
+                // encoded.extend(part.1)
+            // }
+            // let offset_u16 = offset_idx as u16;
+            // let mut offset_bytes = offset_u16.to_be_bytes();
+            // offset_bytes[0] |= 0b1100_0000;
+            // encoded.extend(offset_bytes);
+        // } else {
+            // encoded.extend(non_compressed);
+        // }
+// 
+        // Ok(())
+    // }
 }
+
+// fn find_subset_index<>(superset: &Vec<u8>, subset: &Vec<u8>) -> Option<usize> {
+    // if subset.is_empty() {
+        // return None;
+    // }
+// 
+    // if subset.len() > superset.len() {
+        // return None;
+    // }
+// 
+    // for i in 0..=(superset.len() - subset.len()) {
+        // if superset[i..(i + subset.len())] == *subset {
+            // return Some(i);
+        // }
+    // }
+// 
+    // None
+// }

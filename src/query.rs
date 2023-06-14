@@ -2,6 +2,7 @@ use crate::domain_name::{DomainName, LabelSequenceParser};
 use crate::error::{DNSResolverError, Result, map_decode_err, map_encode_err};
 use crate::rr_types::RRType;
 use crate::utils;
+use tokio::net::UdpSocket;
 
 #[derive(Debug)]
 pub struct DNSHeader {
@@ -25,15 +26,13 @@ impl DNSQuestion {
         DNSQuestion { name, q_type, class }
     }
 
-    pub fn encode(&self) -> Result<Vec<u8>> {
-        let mut encoded: Vec<u8> = vec![];
-        let encoded_name = self.name.encode()
+    pub fn encode(&self, encoded: &mut Vec<u8>) -> Result<()> {
+        self.name.encode(encoded)
             .map_err(|e| map_encode_err("question", &e))?;
-        encoded.extend(encoded_name);
         let rr_type = self.q_type.clone() as u16;
         encoded.extend(rr_type.to_be_bytes());
         encoded.extend(self.class.to_be_bytes());
-        Ok(encoded)
+        Ok(())
     }
 
     pub fn decode<'a, T>(iter: &mut T) -> Result<DNSQuestion>
@@ -76,15 +75,13 @@ impl DNSHeader {
         return self.ar_count
     }
 
-    pub fn encode(&self) -> Vec<u8> {
-        let mut encoded: Vec<u8> = vec![];
+    pub fn encode(&self, encoded: &mut Vec<u8>) {
         encoded.extend(self.id.to_be_bytes());
         encoded.extend(self.flags.to_be_bytes());
         encoded.extend(self.qd_count.to_be_bytes());
         encoded.extend(self.an_count.to_be_bytes());
         encoded.extend(self.ns_count.to_be_bytes());
         encoded.extend(self.ar_count.to_be_bytes());
-        encoded
     }
  
     pub fn decode<'a, T>(header_bytes: &mut T) -> Result<DNSHeader> 
@@ -110,8 +107,7 @@ pub fn build_query(domain_name: String, record_type: RRType) -> Result<Vec<u8>> 
     let header = DNSHeader::new(45232, 0, 1, 0, 0, 0);
     let question = DNSQuestion::new(DomainName::new(domain_name), record_type, 1);
     let mut query: Vec<u8> = vec![];
-    query.extend(header.encode());
-    let enc_ques = question.encode()?;
-    query.extend(enc_ques);
+    header.encode(&mut query);
+    question.encode(&mut query)?;
     Ok(query)
 }
