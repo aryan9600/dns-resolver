@@ -6,7 +6,7 @@ use strum_macros::{AsRefStr, EnumString};
 macro_rules! rr_type {
     ($(#[$meta:meta])* $vis:vis enum $name:ident {
         $($variant:ident$( = $val:literal)?),*
-    }) => {
+    ,}) => {
         $(#[$meta])*
         $vis enum $name {
             $($variant$( = $val)?),*

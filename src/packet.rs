@@ -15,7 +15,7 @@ pub struct DNSPacket {
 }
 
 impl DNSPacket {
-    pub fn decode(packet: Vec<u8>) -> Result<DNSPacket> {
+    pub fn decode(packet: &Vec<u8>) -> Result<DNSPacket> {
         let mut packet_iter = packet.iter();
         let mut questions = vec![];
         let mut answers = vec![];

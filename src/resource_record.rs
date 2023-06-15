@@ -94,21 +94,6 @@ impl DNSRecord {
         Ok(record)
     }
 
-    // pub fn encode(&self, encoded: &mut Vec<u8>) -> Result<()> {
-    // self.name.encode_with_compression(encoded)?;
-    //
-    // let rr_type = self.r_type as u16;
-    // encoded.extend(rr_type.to_be_bytes());
-    // encoded.extend(self.class.to_be_bytes());
-    //
-    // let ttl = u32::try_from(self.ttl.as_secs())
-    // .map_err(|e| map_encode_err("rr", &e))?;
-    // encoded.extend(ttl.to_be_bytes());
-    //
-    // encoded.extend(self.rd_len.to_be_bytes());
-    //
-    // }
-
     fn parse_raw_data<'a, T>(&self, response: &mut T) -> Result<String>
     where
         T: Iterator<Item = &'a u8> + Clone,

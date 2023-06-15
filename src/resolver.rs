@@ -51,7 +51,7 @@ impl Resolver {
             let response = self
                 .send_query(nameserver, domain.clone(), record_type.clone())
                 .await?;
-            let packet = DNSPacket::decode(response.clone())?;
+            let packet = DNSPacket::decode(&response)?;
 
             if packet.answers(&record_type).len() > 0 {
                 return Ok((packet.answers(&record_type), response));
@@ -82,7 +82,7 @@ impl Resolver {
             let response = self
                 .send_query(nameserver, domain.clone(), record_type.clone())
                 .await?;
-            let packet = DNSPacket::decode(response.clone())?;
+            let packet = DNSPacket::decode(&response)?;
 
             if packet.answers(&record_type).len() > 0 {
                 return Ok((packet.answers(&record_type), response));
@@ -112,38 +112,10 @@ impl Resolver {
             let response = self
                 .send_query(nameserver, domain.clone(), record_type.clone())
                 .await?;
-            let packet = DNSPacket::decode(response.clone())?;
+            let packet = DNSPacket::decode(&response)?;
 
             if packet.answers(&record_type).len() > 0 {
                 return Ok((packet.answers(&record_type), response));
-            } else if let Some(ns_ip) = packet.ns_ip() {
-                nameserver = ns_ip.to_owned();
-            } else if let Some(ns) = packet.nameserver() {
-                let (ips, _) = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = ips[0].clone();
-            } else {
-                return Err(DNSResolverError::LookupFailure(String::from("TXT"), domain));
-            }
-        }
-    }
-
-    pub async fn txt_record(&self, domain: String) -> Result<Vec<u8>> {
-        let mut nameserver = String::from("198.41.0.4");
-        let record_type = RRType::TXT;
-
-        loop {
-            println!(
-                "Querying {} for {} about {:?} type",
-                nameserver, domain, record_type
-            );
-            let response = self
-                .send_query(nameserver, domain.clone(), record_type.clone())
-                .await?;
-            let packet = DNSPacket::decode(response.clone())?;
-
-            if packet.answers(&record_type).len() > 0 {
-                println!("{:?}", packet.answers(&record_type));
-                return Ok(response);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
@@ -171,7 +143,7 @@ impl Resolver {
                 let response = self
                     .send_query(nameserver, domain.clone(), record_type.clone())
                     .await?;
-                let packet = DNSPacket::decode(response.clone())?;
+                let packet = DNSPacket::decode(&response)?;
 
                 if packet.answers(&record_type).len() > 0 {
                     return Ok((packet.answers(&record_type), response));
@@ -199,7 +171,7 @@ impl Resolver {
     ) -> Result<Vec<u8>> {
         nameserver.push_str(":53");
         self.socket
-            .connect(nameserver.clone())
+            .connect(&nameserver)
             .await
             .map_err(|e| DNSResolverError::ConnectionFailure(nameserver, e.to_string()))?;
 
@@ -219,20 +191,5 @@ impl Resolver {
 
         let reply = buf[..no].to_vec();
         Ok(reply)
-    }
-
-    pub async fn get_question(&self) -> Result<(SocketAddr, DNSQuestion)> {
-        let mut buf = [0; 1024];
-        let (no, addr) = self
-            .socket
-            .recv_from(&mut buf)
-            .await
-            .map_err(|e| DNSResolverError::IOFailure(String::from("receive"), e.to_string()))?;
-        let query = buf[..no].to_vec();
-        let mut query_iter = query.iter();
-
-        let _header = DNSHeader::decode(&mut query_iter)?;
-        let question = DNSQuestion::decode(&mut query_iter)?;
-        Ok((addr, question))
     }
 }
