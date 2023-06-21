@@ -17,10 +17,10 @@ async fn main() -> Result<()> {
 
         let resolver = Resolver::new("0.0.0.0:3400").await?;
         let domain = question.name().0.clone();
-        let (_, mut packet) = resolver.resolve(domain, question.q_type()).await?;
-        let id = header.id().to_be_bytes();
-        packet[0] = id[0];
-        packet[1] = id[1];
-        socket.send_to(&packet, addr).await?;
+        let mut packet = resolver.resolve(domain, question.q_type()).await?;
+        packet.set_id(header.id());
+
+        let encoded = packet.encode()?;
+        socket.send_to(&encoded, addr).await?;
     }
 }

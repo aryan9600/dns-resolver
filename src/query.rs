@@ -3,6 +3,7 @@ use crate::error::{map_decode_err, map_encode_err, DNSResolverError, Result};
 use crate::rr_types::RRType;
 use crate::utils;
 
+// DNSHeader represents a DNS header.
 #[derive(Debug)]
 pub struct DNSHeader {
     id: u16,
@@ -13,6 +14,7 @@ pub struct DNSHeader {
     ar_count: u16,
 }
 
+// DNSQuestion represents a DNS question.
 #[derive(Debug)]
 pub struct DNSQuestion {
     name: DomainName,
@@ -37,16 +39,19 @@ impl DNSQuestion {
         &self.q_type
     }
 
+    // Encode the question into the provided vector in its wire format.
     pub fn encode(&self, encoded: &mut Vec<u8>) -> Result<()> {
         self.name
             .encode(encoded)
             .map_err(|e| map_encode_err("question", &e))?;
+
         let rr_type = self.q_type.clone() as u16;
         encoded.extend(rr_type.to_be_bytes());
         encoded.extend(self.class.to_be_bytes());
         Ok(())
     }
 
+    // Decode the question from its wire format into our representation.
     pub fn decode<'a, T>(iter: &mut T) -> Result<DNSQuestion>
     where
         T: Iterator<Item = &'a u8> + Clone,
@@ -108,6 +113,11 @@ impl DNSHeader {
         return self.ar_count;
     }
 
+    pub fn set_id(&mut self, id: u16) {
+        self.id = id
+    }
+
+    // Encode the header into the provided vector in its wire format.
     pub fn encode(&self, encoded: &mut Vec<u8>) {
         encoded.extend(self.id.to_be_bytes());
         encoded.extend(self.flags.to_be_bytes());
@@ -117,6 +127,7 @@ impl DNSHeader {
         encoded.extend(self.ar_count.to_be_bytes());
     }
 
+    // Decode the header from its wire format into our representation.
     pub fn decode<'a, T>(header_bytes: &mut T) -> Result<DNSHeader>
     where
         T: Iterator<Item = &'a u8>,
@@ -141,6 +152,8 @@ impl DNSHeader {
     }
 }
 
+// Build a DNS query (in the wire format) using the provided domain
+// name and the record type.
 pub fn build_query(domain_name: String, record_type: RRType) -> Result<Vec<u8>> {
     let header = DNSHeader::new(45232, 0, 1, 0, 0, 0);
     let question = DNSQuestion::new(DomainName::new(domain_name), record_type, 1);

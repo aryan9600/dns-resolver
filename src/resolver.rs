@@ -1,12 +1,12 @@
 use crate::error::{DNSResolverError, Result};
 use crate::packet::DNSPacket;
-use crate::query::{self, DNSHeader, DNSQuestion};
+use crate::query::{self};
 use crate::rr_types::RRType;
 use std::future::Future;
-use std::net::SocketAddr;
 use std::pin::Pin;
 use tokio::net::UdpSocket;
 
+// Resolver is a DNS resolver.
 pub struct Resolver {
     pub socket: UdpSocket,
 }
@@ -19,11 +19,9 @@ impl Resolver {
         Ok(Resolver { socket })
     }
 
-    pub async fn resolve(
-        &self,
-        domain: String,
-        record_type: &RRType,
-    ) -> Result<(Vec<String>, Vec<u8>)> {
+    // Constructs a DNS query out of the provided domain and record type, resolves
+    // the same and returns the resolved DNS packet.
+    pub async fn resolve(&self, domain: String, record_type: &RRType) -> Result<DNSPacket> {
         if record_type == &RRType::A {
             return self.resolve_a_record(domain).await;
         } else if record_type == &RRType::CNAME {
@@ -39,7 +37,7 @@ impl Resolver {
         }
     }
 
-    async fn resolve_ns_record(&self, domain: String) -> Result<(Vec<String>, Vec<u8>)> {
+    async fn resolve_ns_record(&self, domain: String) -> Result<DNSPacket> {
         let mut nameserver = String::from("198.41.0.4");
         let record_type = RRType::NS;
 
@@ -54,23 +52,23 @@ impl Resolver {
             let packet = DNSPacket::decode(&response)?;
 
             if packet.answers(&record_type).len() > 0 {
-                return Ok((packet.answers(&record_type), response));
+                return Ok(packet);
             } else if packet.answers(&RRType::CNAME).len() > 0 {
                 let cname = packet.answers(&RRType::CNAME)[0].clone();
-                let (resolved_cname, response) = self.resolve_a_record(cname).await?;
-                return Ok((resolved_cname, response));
+                let resolved_cname = self.resolve_a_record(cname).await?;
+                return Ok(resolved_cname);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
-                let (ips, _) = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = ips[0].clone();
+                let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
+                nameserver = resolved_ns.answers(&RRType::A)[0].clone();
             } else {
                 return Err(DNSResolverError::LookupFailure(String::from("NS"), domain));
             }
         }
     }
 
-    async fn resolve_cname_record(&self, domain: String) -> Result<(Vec<String>, Vec<u8>)> {
+    async fn resolve_cname_record(&self, domain: String) -> Result<DNSPacket> {
         let mut nameserver = String::from("198.41.0.4");
         let record_type = RRType::CNAME;
 
@@ -85,12 +83,12 @@ impl Resolver {
             let packet = DNSPacket::decode(&response)?;
 
             if packet.answers(&record_type).len() > 0 {
-                return Ok((packet.answers(&record_type), response));
+                return Ok(packet);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
-                let (ips, _) = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = ips[0].clone();
+                let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
+                nameserver = resolved_ns.answers(&RRType::A)[0].clone();
             } else {
                 return Err(DNSResolverError::LookupFailure(
                     String::from("CNAME"),
@@ -100,7 +98,7 @@ impl Resolver {
         }
     }
 
-    async fn resolve_txt_record(&self, domain: String) -> Result<(Vec<String>, Vec<u8>)> {
+    async fn resolve_txt_record(&self, domain: String) -> Result<DNSPacket> {
         let mut nameserver = String::from("198.41.0.4");
         let record_type = RRType::TXT;
 
@@ -115,12 +113,12 @@ impl Resolver {
             let packet = DNSPacket::decode(&response)?;
 
             if packet.answers(&record_type).len() > 0 {
-                return Ok((packet.answers(&record_type), response));
+                return Ok(packet);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
-                let (ips, _) = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = ips[0].clone();
+                let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
+                nameserver = resolved_ns.answers(&RRType::A)[0].clone();
             } else {
                 return Err(DNSResolverError::LookupFailure(String::from("TXT"), domain));
             }
@@ -130,7 +128,7 @@ impl Resolver {
     fn resolve_a_record(
         &self,
         domain: String,
-    ) -> Pin<Box<dyn Future<Output = Result<(Vec<String>, Vec<u8>)>> + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<DNSPacket>> + '_>> {
         Box::pin(async move {
             let mut nameserver = String::from("198.41.0.4");
             let record_type = RRType::A;
@@ -146,16 +144,16 @@ impl Resolver {
                 let packet = DNSPacket::decode(&response)?;
 
                 if packet.answers(&record_type).len() > 0 {
-                    return Ok((packet.answers(&record_type), response));
+                    return Ok(packet);
                 } else if packet.answers(&RRType::CNAME).len() > 0 {
                     let cname = packet.answers(&RRType::CNAME)[0].clone();
-                    let (resolved_cname, response) = self.resolve_a_record(cname).await?;
-                    return Ok((resolved_cname, response));
+                    let resolved_cname = self.resolve_a_record(cname).await?;
+                    return Ok(resolved_cname);
                 } else if let Some(ns_ip) = packet.ns_ip() {
                     nameserver = ns_ip.to_owned();
                 } else if let Some(ns) = packet.nameserver() {
-                    let (ips, _) = self.resolve_a_record(ns.to_owned()).await?;
-                    nameserver = ips[0].clone();
+                    let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
+                    nameserver = resolved_ns.answers(&RRType::A)[0].clone();
                 } else {
                     return Err(DNSResolverError::LookupFailure(String::from("A"), domain));
                 }

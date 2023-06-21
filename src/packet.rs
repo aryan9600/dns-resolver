@@ -5,6 +5,7 @@ use crate::{
     rr_types::RRType,
 };
 
+// DNSPacket represents a DNS packet.
 #[derive(Debug)]
 pub struct DNSPacket {
     header: DNSHeader,
@@ -15,6 +16,7 @@ pub struct DNSPacket {
 }
 
 impl DNSPacket {
+    // Decode the packet from its wire format into our representation.
     pub fn decode(packet: &Vec<u8>) -> Result<DNSPacket> {
         let mut packet_iter = packet.iter();
         let mut questions = vec![];
@@ -49,6 +51,31 @@ impl DNSPacket {
         })
     }
 
+    // Encode the packet into the wire format.
+    pub fn encode(&self) -> Result<Vec<u8>> {
+        let mut encoded = vec![];
+        self.header.encode(&mut encoded);
+        for question in &self.questions {
+            question.encode(&mut encoded)?;
+        }
+        for answer in &self.answers {
+            answer.encode(&mut encoded)?;
+        }
+        for authority in &self.authorities {
+            authority.encode(&mut encoded)?;
+        }
+        for additional in &self.additionals {
+            additional.encode(&mut encoded)?;
+        }
+        Ok(encoded)
+    }
+
+    // Sets the provided id as its header's id.
+    pub fn set_id(&mut self, id: u16) {
+        self.header.set_id(id);
+    }
+
+    // Returns the data of a particular record type from the answers section.
     pub fn answers(&self, record_type: &RRType) -> Vec<String> {
         let mut answers = vec![];
         for ans in &self.answers {
@@ -61,6 +88,7 @@ impl DNSPacket {
         answers
     }
 
+    // Returns the data of the first A record in the additionals section.
     pub fn ns_ip(&self) -> &Option<String> {
         for additional in &self.additionals {
             if additional.r_type() == &RRType::A {
@@ -70,6 +98,7 @@ impl DNSPacket {
         &None
     }
 
+    // Returns the data of the first NS record in the authorities section.
     pub fn nameserver(&self) -> &Option<String> {
         for ns in &self.authorities {
             if ns.r_type() == &RRType::NS {

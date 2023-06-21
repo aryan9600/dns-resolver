@@ -8,6 +8,7 @@ use crate::error::{map_decode_err, DNSResolverError, Result};
 use crate::rr_types::RRType;
 use crate::utils;
 
+// DNSRecord represents a DNS resource record.
 #[derive(Debug)]
 pub struct DNSRecord {
     name: DomainName,
@@ -18,6 +19,7 @@ pub struct DNSRecord {
     data: Data,
 }
 
+// Data is our representation of the data in a resource record.
 #[derive(Clone, Debug)]
 struct Data {
     raw: Vec<u8>,
@@ -125,5 +127,30 @@ impl DNSRecord {
         } else {
             return Err(DNSResolverError::Parse);
         }
+    }
+
+    // Encode the resource record into the provided vector in its wire format.
+    pub fn encode(&self, encoded: &mut Vec<u8>) -> Result<()> {
+        // encode the domain name and use compression if possible.
+        self.name.encode_with_compression(encoded)?;
+
+        let rr_type = self.r_type.clone() as u16;
+        encoded.extend(rr_type.to_be_bytes());
+        encoded.extend(self.class.to_be_bytes());
+
+        // encode ttl. the drain gets us the last 4 bytes converting
+        // u64 to u32.
+        let ttl = self
+            .ttl
+            .as_secs()
+            .to_be_bytes()
+            .to_vec()
+            .drain(4..8)
+            .collect_vec();
+        encoded.extend(ttl);
+
+        encoded.extend(self.rd_len.to_be_bytes());
+        encoded.extend(&self.data.raw);
+        Ok(())
     }
 }
