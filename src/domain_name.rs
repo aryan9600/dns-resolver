@@ -2,7 +2,7 @@ use crate::error::{map_decode_err, map_encode_err, DNSResolverError, Result};
 use itertools::Itertools;
 
 // DomainName represents a fully form domain name.
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct DomainName(pub String);
 
 // LabelSequenceParser is a parser that knows how to construct

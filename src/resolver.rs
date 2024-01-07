@@ -22,18 +22,16 @@ impl Resolver {
     // Constructs a DNS query out of the provided domain and record type, resolves
     // the same and returns the resolved DNS packet.
     pub async fn resolve(&self, domain: String, record_type: &RRType) -> Result<DNSPacket> {
-        if record_type == &RRType::A {
-            return self.resolve_a_record(domain).await;
-        } else if record_type == &RRType::CNAME {
-            return self.resolve_cname_record(domain).await;
-        } else if record_type == &RRType::TXT {
-            return self.resolve_txt_record(domain).await;
-        } else if record_type == &RRType::NS {
-            return self.resolve_ns_record(domain).await;
-        } else {
-            return Err(DNSResolverError::InvalidRecordType(
-                record_type.as_ref().to_string(),
-            ));
+        match record_type {
+            &RRType::A => self.resolve_a_record(domain).await,
+            &RRType::CNAME => self.resolve_cname_record(domain).await,
+            &RRType::TXT => self.resolve_txt_record(domain).await,
+            &RRType::NS => self.resolve_ns_record(domain).await,
+            _ => {
+                return Err(DNSResolverError::InvalidRecordType(
+                    record_type.as_ref().to_string(),
+                ))
+            }
         }
     }
 
@@ -51,17 +49,17 @@ impl Resolver {
                 .await?;
             let packet = DNSPacket::decode(&response)?;
 
-            if packet.answers(&record_type).len() > 0 {
+            if packet.answers_data(&record_type).len() > 0 {
                 return Ok(packet);
-            } else if packet.answers(&RRType::CNAME).len() > 0 {
-                let cname = packet.answers(&RRType::CNAME)[0].clone();
+            } else if packet.answers_data(&RRType::CNAME).len() > 0 {
+                let cname = packet.answers_data(&RRType::CNAME)[0].clone();
                 let resolved_cname = self.resolve_a_record(cname).await?;
                 return Ok(resolved_cname);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
                 let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = resolved_ns.answers(&RRType::A)[0].clone();
+                nameserver = resolved_ns.answers_data(&RRType::A)[0].clone();
             } else {
                 return Err(DNSResolverError::LookupFailure(String::from("NS"), domain));
             }
@@ -82,13 +80,13 @@ impl Resolver {
                 .await?;
             let packet = DNSPacket::decode(&response)?;
 
-            if packet.answers(&record_type).len() > 0 {
+            if packet.answers_data(&record_type).len() > 0 {
                 return Ok(packet);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
                 let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = resolved_ns.answers(&RRType::A)[0].clone();
+                nameserver = resolved_ns.answers_data(&RRType::A)[0].clone();
             } else {
                 return Err(DNSResolverError::LookupFailure(
                     String::from("CNAME"),
@@ -112,13 +110,13 @@ impl Resolver {
                 .await?;
             let packet = DNSPacket::decode(&response)?;
 
-            if packet.answers(&record_type).len() > 0 {
+            if packet.answers_data(&record_type).len() > 0 {
                 return Ok(packet);
             } else if let Some(ns_ip) = packet.ns_ip() {
                 nameserver = ns_ip.to_owned();
             } else if let Some(ns) = packet.nameserver() {
                 let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
-                nameserver = resolved_ns.answers(&RRType::A)[0].clone();
+                nameserver = resolved_ns.answers_data(&RRType::A)[0].clone();
             } else {
                 return Err(DNSResolverError::LookupFailure(String::from("TXT"), domain));
             }
@@ -143,17 +141,17 @@ impl Resolver {
                     .await?;
                 let packet = DNSPacket::decode(&response)?;
 
-                if packet.answers(&record_type).len() > 0 {
+                if packet.answers_data(&record_type).len() > 0 {
                     return Ok(packet);
-                } else if packet.answers(&RRType::CNAME).len() > 0 {
-                    let cname = packet.answers(&RRType::CNAME)[0].clone();
+                } else if packet.answers_data(&RRType::CNAME).len() > 0 {
+                    let cname = packet.answers_data(&RRType::CNAME)[0].clone();
                     let resolved_cname = self.resolve_a_record(cname).await?;
                     return Ok(resolved_cname);
                 } else if let Some(ns_ip) = packet.ns_ip() {
                     nameserver = ns_ip.to_owned();
                 } else if let Some(ns) = packet.nameserver() {
                     let resolved_ns = self.resolve_a_record(ns.to_owned()).await?;
-                    nameserver = resolved_ns.answers(&RRType::A)[0].clone();
+                    nameserver = resolved_ns.answers_data(&RRType::A)[0].clone();
                 } else {
                     return Err(DNSResolverError::LookupFailure(String::from("A"), domain));
                 }

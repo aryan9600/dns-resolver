@@ -9,7 +9,7 @@ use crate::rr_types::RRType;
 use crate::utils;
 
 // DNSRecord represents a DNS resource record.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DNSRecord {
     name: DomainName,
     r_type: RRType,
@@ -29,6 +29,10 @@ struct Data {
 impl DNSRecord {
     pub fn r_type(&self) -> &RRType {
         &self.r_type
+    }
+
+    pub fn ttl(&self) -> Duration {
+        self.ttl
     }
 
     pub fn parsed_data(&self) -> &Option<String> {

@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     let resolver = Resolver::new("0.0.0.0:3400").await?;
     let packet = resolver.resolve(domain, &rr_type).await?;
-    let ips = packet.answers(&rr_type);
+    let ips = packet.answers_data(&rr_type);
 
     println!("answer(s): {:?}", ips);
     Ok(())

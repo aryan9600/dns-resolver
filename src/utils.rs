@@ -14,3 +14,29 @@ where
     }
     Ok(parts)
 }
+
+pub fn set_bit(number: u16, bit: u8, position: u16) -> u16 {
+    if position < 16 {
+        let mask: u16 = 1 << 15 - position;
+        let bit_value = if bit == 0 { 0 } else { 1 };
+        if bit_value == 1 {
+            number | mask
+        } else {
+            number & !mask
+        }
+    } else {
+        number
+    }
+}
+
+pub fn get_bit(number: u16, position: u16) -> u8 {
+    if position < 16 {
+        if (number >> 15 - position) & 1 == 1 {
+            1
+        } else {
+            0
+        }
+    } else {
+        0
+    }
+}

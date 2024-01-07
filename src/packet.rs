@@ -16,6 +16,21 @@ pub struct DNSPacket {
 }
 
 impl DNSPacket {
+    pub fn new(
+        header: DNSHeader,
+        questions: Vec<DNSQuestion>,
+        answers: Vec<DNSRecord>,
+        authorities: Vec<DNSRecord>,
+        additionals: Vec<DNSRecord>,
+    ) -> DNSPacket {
+        DNSPacket {
+            header,
+            questions,
+            answers,
+            authorities,
+            additionals,
+        }
+    }
     // Decode the packet from its wire format into our representation.
     pub fn decode(packet: &Vec<u8>) -> Result<DNSPacket> {
         let mut packet_iter = packet.iter();
@@ -75,8 +90,13 @@ impl DNSPacket {
         self.header.set_id(id);
     }
 
+    // Returns the entire answers section.
+    pub fn answers(&mut self) -> &Vec<DNSRecord> {
+        &self.answers
+    }
+
     // Returns the data of a particular record type from the answers section.
-    pub fn answers(&self, record_type: &RRType) -> Vec<String> {
+    pub fn answers_data(&self, record_type: &RRType) -> Vec<String> {
         let mut answers = vec![];
         for ans in &self.answers {
             if ans.r_type() == record_type {

@@ -28,7 +28,7 @@ macro_rules! rr_type {
 }
 
 rr_type!(
-    #[derive(Debug, EnumString, Clone, PartialEq, AsRefStr)]
+    #[derive(Debug, EnumString, Clone, PartialEq, AsRefStr, Eq, Hash)]
     pub enum RRType {
         A = 1,
         NS,

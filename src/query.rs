@@ -1,7 +1,7 @@
 use crate::domain_name::{DomainName, LabelSequenceParser};
 use crate::error::{map_decode_err, map_encode_err, DNSResolverError, Result};
 use crate::rr_types::RRType;
-use crate::utils;
+use crate::utils::{self, get_bit, set_bit};
 
 // DNSHeader represents a DNS header.
 #[derive(Debug)]
@@ -20,6 +20,11 @@ pub struct DNSQuestion {
     name: DomainName,
     q_type: RRType,
     class: u16,
+}
+
+pub enum QR {
+    Query = 0,
+    Response,
 }
 
 impl DNSQuestion {
@@ -94,8 +99,35 @@ impl DNSHeader {
         }
     }
 
+    pub fn set_qr(&mut self, qr: QR) {
+        self.flags = set_bit(self.flags, qr as u8, 0);
+    }
+
+    pub fn set_opcode_std_query(&mut self) {
+        for i in 1..5 {
+            self.flags = set_bit(self.flags, 0, i);
+        }
+    }
+
+    pub fn set_recursion_desired(&mut self, rd: bool) {
+        self.flags = set_bit(self.flags, rd as u8, 7);
+    }
+
+    pub fn set_recursion_available(&mut self, ra: bool) {
+        self.flags = set_bit(self.flags, ra as u8, 8);
+    }
+
     pub fn id(&self) -> u16 {
         self.id
+    }
+
+    pub fn recursion_desired(&self) -> bool {
+        let rd = get_bit(self.flags, 7);
+        if rd == 1 {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn num_questions(&self) -> u16 {
