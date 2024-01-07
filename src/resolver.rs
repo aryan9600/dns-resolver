@@ -41,7 +41,7 @@ impl Resolver {
 
         loop {
             println!(
-                "Querying {} for {} about {:?} type",
+                "Querying {} for {} about record type {:?}",
                 nameserver, domain, record_type
             );
             let response = self
@@ -72,7 +72,7 @@ impl Resolver {
 
         loop {
             println!(
-                "Querying {} for {} about {:?} type",
+                "Querying {} for {} about record type {:?}",
                 nameserver, domain, record_type
             );
             let response = self
@@ -102,7 +102,7 @@ impl Resolver {
 
         loop {
             println!(
-                "Querying {} for {} about {:?} type",
+                "Querying {} for {} about record type {:?}",
                 nameserver, domain, record_type
             );
             let response = self
@@ -133,7 +133,7 @@ impl Resolver {
 
             loop {
                 println!(
-                    "Querying {} for {} about {:?} type",
+                    "Querying {} for {} about record type {:?}",
                     nameserver, domain, record_type
                 );
                 let response = self
