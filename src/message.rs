@@ -5,9 +5,9 @@ use crate::{
     rr_types::RRType,
 };
 
-// DNSPacket represents a DNS packet.
+// DNSMessage represents a DNS message.
 #[derive(Debug)]
-pub struct DNSPacket {
+pub struct DNSMessage {
     header: DNSHeader,
     questions: Vec<DNSQuestion>,
     answers: Vec<DNSRecord>,
@@ -15,15 +15,15 @@ pub struct DNSPacket {
     additionals: Vec<DNSRecord>,
 }
 
-impl DNSPacket {
+impl DNSMessage {
     pub fn new(
         header: DNSHeader,
         questions: Vec<DNSQuestion>,
         answers: Vec<DNSRecord>,
         authorities: Vec<DNSRecord>,
         additionals: Vec<DNSRecord>,
-    ) -> DNSPacket {
-        DNSPacket {
+    ) -> DNSMessage {
+        DNSMessage {
             header,
             questions,
             answers,
@@ -31,33 +31,34 @@ impl DNSPacket {
             additionals,
         }
     }
-    // Decode the packet from its wire format into our representation.
-    pub fn decode(packet: &Vec<u8>) -> Result<DNSPacket> {
-        let mut packet_iter = packet.iter();
+
+    // Decode the message from its wire format into our representation.
+    pub fn decode(message: &Vec<u8>) -> Result<DNSMessage> {
+        let mut message_iter = message.iter();
         let mut questions = vec![];
         let mut answers = vec![];
         let mut authorities = vec![];
         let mut additionals = vec![];
 
-        let header = DNSHeader::decode(&mut packet_iter)?;
+        let header = DNSHeader::decode(&mut message_iter)?;
         for _ in 0..header.num_questions() {
-            let question = DNSQuestion::decode(&mut packet_iter)?;
+            let question = DNSQuestion::decode(&mut message_iter)?;
             questions.push(question);
         }
         for _ in 0..header.num_answers() {
-            let answer = DNSRecord::decode(&mut packet_iter, &mut packet.iter())?;
+            let answer = DNSRecord::decode(&mut message_iter, &mut message.iter())?;
             answers.push(answer);
         }
         for _ in 0..header.num_authorities() {
-            let rr = DNSRecord::decode(&mut packet_iter, &mut packet.iter())?;
+            let rr = DNSRecord::decode(&mut message_iter, &mut message.iter())?;
             authorities.push(rr);
         }
         for _ in 0..header.num_additionals() {
-            let rr = DNSRecord::decode(&mut packet_iter, &mut packet.iter())?;
+            let rr = DNSRecord::decode(&mut message_iter, &mut message.iter())?;
             additionals.push(rr);
         }
 
-        Ok(DNSPacket {
+        Ok(DNSMessage {
             header,
             questions,
             answers,
@@ -66,7 +67,7 @@ impl DNSPacket {
         })
     }
 
-    // Encode the packet into the wire format.
+    // Encode the message into the wire format.
     pub fn encode(&self) -> Result<Vec<u8>> {
         let mut encoded = vec![];
         self.header.encode(&mut encoded);
@@ -85,7 +86,6 @@ impl DNSPacket {
         Ok(encoded)
     }
 
-    // Sets the provided id as its header's id.
     pub fn set_id(&mut self, id: u16) {
         self.header.set_id(id);
     }

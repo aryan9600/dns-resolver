@@ -99,22 +99,27 @@ impl DNSHeader {
         }
     }
 
+    // Set the QR (0th) bit of the header's flags.
+    // 1 signfies a response; 0 signfies a query.
     pub fn set_qr(&mut self, qr: QR) {
         self.flags = set_bit(self.flags, qr as u8, 0);
     }
 
-    pub fn set_opcode_std_query(&mut self) {
-        for i in 1..5 {
-            self.flags = set_bit(self.flags, 0, i);
-        }
-    }
-
+    // Set the RD (7th) bit of the header's flags.
+    // Signifies whether recursion is desired.
     pub fn set_recursion_desired(&mut self, rd: bool) {
         self.flags = set_bit(self.flags, rd as u8, 7);
     }
 
+    // Set the RA (8th) bit of the header's flags.
+    // Signifies whether recursion is available.
     pub fn set_recursion_available(&mut self, ra: bool) {
         self.flags = set_bit(self.flags, ra as u8, 8);
+    }
+
+    // Set the header ID.
+    pub fn set_id(&mut self, id: u16) {
+        self.id = id
     }
 
     pub fn id(&self) -> u16 {
@@ -143,10 +148,6 @@ impl DNSHeader {
     }
     pub fn num_additionals(&self) -> u16 {
         return self.ar_count;
-    }
-
-    pub fn set_id(&mut self, id: u16) {
-        self.id = id
     }
 
     // Encode the header into the provided vector in its wire format.

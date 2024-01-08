@@ -1,13 +1,13 @@
 use anyhow::Result;
 use dns_resolver::cache::DNSCache;
-use dns_resolver::packet::DNSPacket;
+use dns_resolver::message::DNSMessage;
 use dns_resolver::query::{DNSHeader, DNSQuestion, QR};
 use dns_resolver::resolver::Resolver;
 use tokio::net::UdpSocket;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let socket = UdpSocket::bind("0.0.0.0:3500").await?;
+    let socket = UdpSocket::bind("127.0.0.1:3500").await?;
     let mut cache = DNSCache::new(100);
     loop {
         let mut buf = [0; 1024];
@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
         let header = DNSHeader::decode(&mut query_iter)?;
         let question = DNSQuestion::decode(&mut query_iter)?;
-        let mut packet: DNSPacket;
+        let mut message: DNSMessage;
         if let Some(answer) = cache.get(question.name(), question.q_type()) {
             let mut new_header = DNSHeader::new(
                 header.id(),
@@ -32,16 +32,20 @@ async fn main() -> Result<()> {
             new_header.set_recursion_available(true);
             let questions = vec![question];
             let answers = answer.data();
-            packet = DNSPacket::new(new_header, questions, answers, vec![], vec![]);
+            message = DNSMessage::new(new_header, questions, answers, vec![], vec![]);
         } else {
             let resolver = Resolver::new("0.0.0.0:3400").await?;
             let domain = question.name().0.clone();
-            packet = resolver.resolve(domain, question.q_type()).await?;
-            packet.set_id(header.id());
-            cache.insert(question.name(), question.q_type(), packet.answers().clone());
+            message = resolver.resolve(domain, question.q_type()).await?;
+            message.set_id(header.id());
+            cache.insert(
+                question.name(),
+                question.q_type(),
+                message.answers().clone(),
+            );
         }
 
-        let encoded = packet.encode()?;
+        let encoded = message.encode()?;
         socket.send_to(&encoded, addr).await?;
     }
 }

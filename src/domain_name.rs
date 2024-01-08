@@ -18,7 +18,7 @@ impl LabelSequenceParser {
     }
 
     // Constructs the domain name from its wire format.
-    // response is supposed to be the entire DNS packet required
+    // response is supposed to be the entire DNS message required
     // to go back to where a pointer is pointing.
     pub fn construct_domain_name<'a, T>(
         &mut self,
@@ -166,7 +166,7 @@ impl DomainName {
         let mut parts_iter = parts.iter();
         loop {
             if let Some(part) = parts_iter.next() {
-                // check if the label is already present somewhere in the encoded packet.
+                // check if the label is already present somewhere in the encoded message.
                 if let Some(idx) = find_subset_index(&encoded, &part.1) {
                     // subtract 1 here since we need to include the length octect that appears
                     // before the start of label.

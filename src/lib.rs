@@ -1,7 +1,7 @@
 pub mod cache;
 pub mod domain_name;
 pub mod error;
-pub mod packet;
+pub mod message;
 pub mod query;
 pub mod resolver;
 pub mod resource_record;
